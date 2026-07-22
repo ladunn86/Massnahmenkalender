@@ -1,12 +1,20 @@
 {
   "name": "massnahmenkalender",
   "version": "1.0.0",
-  "private": true,
-  "description": "Maßnahmenkalender Desktop",
+  "description": "Massnahmenkalender Desktop",
+  "main": "main.js",
   "scripts": {
-    "tauri": "tauri"
+    "start": "electron ."
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.0.0"
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "de.massnahmenkalender.app",
+    "productName": "Massnahmenkalender",
+    "win": {
+      "target": "nsis"
+    }
   }
 }
