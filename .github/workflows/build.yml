@@ -1,1 +1,32 @@
+name: Build Windows EXE
 
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Repository herunterladen
+        uses: actions/checkout@v4
+
+      - name: Node.js installieren
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Abhängigkeiten installieren
+        run: npm install
+
+      - name: Electron-Anwendung bauen
+        run: npx electron-builder --win --publish never
+
+      - name: EXE hochladen
+        uses: actions/upload-artifact@v4
+        with:
+          name: Massnahmenkalender-Windows
+          path: dist/*
