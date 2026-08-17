@@ -1,5 +1,5 @@
 <!-- © 2026 Arno Faulwasser -->
-<script>const APP_VERSION = '1.0.0';</script>
+<script>const APP_VERSION = '1.0.1';</script>
 !DOCTYPE html>
 <html lang="de">
 <head>
@@ -174,7 +174,7 @@
 
   <div id="calendar"></div>
   <div id="summary"></div>
-  <div style="text-align:center; margin-top:22px; font-size:10px; color:#9aa0a6;">© 2026 arvaport Dienstleistungsgesellschaft mbH · Version 1.0.0</div>
+  <div style="text-align:center; margin-top:22px; font-size:10px; color:#9aa0a6;">© 2026 arvaport Dienstleistungsgesellschaft mbH · Version 1.0.1</div>
 </div>
 
 <div id="categoryModal" class="modal hidden">
@@ -1619,12 +1619,23 @@ function init(){
   document.getElementById('kalLogosInput').addEventListener('change', function(){ kalLogoFiles=Array.from(this.files); renderKalLogosPreview(); });
 
   var calendar=document.getElementById('calendar');
+
+  // Maussteuerung:
+  // - einzelner Linksklick = ein Tag
+  // - linke Maustaste halten + ziehen = mehrere Tage
+  // - nur darüberfahren = NICHTS ändern
+  // - beim Loslassen oder Verlassen des Fensters wird der Malmodus beendet
   calendar.addEventListener('mousedown', function(e){
-    var row=e.target.closest('.day-row'); if(!row) return;
+    var row=e.target.closest('.day-row');
+    if(!row) return;
+
+    // Nur die primäre/linke Maustaste darf malen oder verschieben.
+    if(e.button !== 0) return;
+
     var isoStr=row.dataset.iso;
+
     if(moveMode){
       if(selection && isoStr>=selection.startIso && isoStr<=selection.endIso && !e.shiftKey){
-        // grab the existing block to drag it
         isDraggingBlock=true;
         dragGrabIso=isoStr;
         dragPreviewDelta=0;
@@ -1635,14 +1646,21 @@ function init(){
       } else {
         handleSelectClick(isoStr, e.shiftKey);
       }
+    } else {
+      isPainting=true;
+      applyPaint(isoStr);
+      e.preventDefault();
     }
-    else{ isPainting=true; applyPaint(isoStr); }
   });
+
   calendar.addEventListener('mouseover', function(e){
-    var row=e.target.closest('.day-row'); if(!row) return;
+    var row=e.target.closest('.day-row');
+    if(!row) return;
+
     if(isDraggingBlock){
       var hoveredIso=row.dataset.iso;
       var delta=Math.round((parseIso(hoveredIso)-parseIso(dragGrabIso))/86400000);
+
       if(delta!==dragPreviewDelta){
         dragPreviewDelta=delta;
         renderCalendar();
@@ -1650,30 +1668,70 @@ function init(){
       }
       return;
     }
-    if(!isPainting || moveMode) return;
+
+    // WICHTIG:
+    // mouseover darf nur dann malen, wenn die linke Maustaste
+    // aktuell wirklich gedrückt ist. MouseEvent.buttons === 1
+    // bedeutet primäre Maustaste gedrückt.
+    if(!isPainting || moveMode || !(e.buttons & 1)) return;
+
     applyPaint(row.dataset.iso);
   });
+
   calendar.addEventListener('dblclick', function(e){
-    var row=e.target.closest('.day-row'); if(!row) return;
+    var row=e.target.closest('.day-row');
+    if(!row) return;
+
     var isoStr=row.dataset.iso;
     var cur=state.dayData[isoStr];
     if(!cur) return;
+
     var cat=catById(cur.cat);
-    var val=prompt('UE für '+fmtDe(parseIso(isoStr))+' (leer = Standard '+(cat?cat.ue:0)+'):', cur.ueOverride!=null?cur.ueOverride:'');
+    var val=prompt(
+      'UE für '+fmtDe(parseIso(isoStr))+
+      ' (leer = Standard '+(cat?cat.ue:0)+'):',
+      cur.ueOverride!=null?cur.ueOverride:''
+    );
+
     if(val===null) return;
-    if(val.trim()===''){ delete cur.ueOverride; }
-    else{ var num=parseFloat(val.replace(',','.')); if(!isNaN(num)) cur.ueOverride=num; }
+
+    if(val.trim()===''){
+      delete cur.ueOverride;
+    } else {
+      var num=parseFloat(val.replace(',','.'));
+      if(!isNaN(num)) cur.ueOverride=num;
+    }
+
     renderCalendar();
   });
+
   document.addEventListener('mouseup', function(){
     isPainting=false;
+
     if(isDraggingBlock){
       isDraggingBlock=false;
       document.body.classList.remove('dragging-block');
+
       var delta=dragPreviewDelta;
       dragPreviewDelta=0;
-      if(delta!==0){ shiftSelection(delta); }
-      else{ renderCalendar(); }
+
+      if(delta!==0){
+        shiftSelection(delta);
+      } else {
+        renderCalendar();
+      }
+    }
+  });
+
+  // Sicherheit: Wenn das Fenster den Fokus verliert, darf ein
+  // versehentlich aktiv gebliebener Malmodus nicht weiterarbeiten.
+  window.addEventListener('blur', function(){
+    isPainting=false;
+    if(isDraggingBlock){
+      isDraggingBlock=false;
+      dragPreviewDelta=0;
+      document.body.classList.remove('dragging-block');
+      renderCalendar();
     }
   });
 
