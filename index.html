@@ -1,3 +1,5 @@
+<!-- © 2026 Arno Faulwasser -->
+<script>const APP_VERSION = '1.0.0';</script>
 !DOCTYPE html>
 <html lang="de">
 <head>
@@ -172,6 +174,7 @@
 
   <div id="calendar"></div>
   <div id="summary"></div>
+  <div style="text-align:center; margin-top:22px; font-size:10px; color:#9aa0a6;">© 2026 arvaport Dienstleistungsgesellschaft mbH · Version 1.0.0</div>
 </div>
 
 <div id="categoryModal" class="modal hidden">
@@ -1618,10 +1621,6 @@ function init(){
   var calendar=document.getElementById('calendar');
   calendar.addEventListener('mousedown', function(e){
     var row=e.target.closest('.day-row'); if(!row) return;
-
-    // Nur die linke Maustaste darf malen bzw. verschieben.
-    if(e.button !== 0) return;
-
     var isoStr=row.dataset.iso;
     if(moveMode){
       if(selection && isoStr>=selection.startIso && isoStr<=selection.endIso && !e.shiftKey){
@@ -1637,12 +1636,7 @@ function init(){
         handleSelectClick(isoStr, e.shiftKey);
       }
     }
-    else{
-      // Beim tatsächlichen Mausklick beginnen wir mit dem Malen.
-      isPainting=true;
-      applyPaint(isoStr);
-      e.preventDefault();
-    }
+    else{ isPainting=true; applyPaint(isoStr); }
   });
   calendar.addEventListener('mouseover', function(e){
     var row=e.target.closest('.day-row'); if(!row) return;
@@ -1656,7 +1650,6 @@ function init(){
       }
       return;
     }
-    // Nur während eines aktiven linken Maustasten-Ziehens malen.
     if(!isPainting || moveMode) return;
     applyPaint(row.dataset.iso);
   });
