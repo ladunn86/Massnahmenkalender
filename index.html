@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
@@ -1618,6 +1618,10 @@ function init(){
   var calendar=document.getElementById('calendar');
   calendar.addEventListener('mousedown', function(e){
     var row=e.target.closest('.day-row'); if(!row) return;
+
+    // Nur die linke Maustaste darf malen bzw. verschieben.
+    if(e.button !== 0) return;
+
     var isoStr=row.dataset.iso;
     if(moveMode){
       if(selection && isoStr>=selection.startIso && isoStr<=selection.endIso && !e.shiftKey){
@@ -1633,7 +1637,12 @@ function init(){
         handleSelectClick(isoStr, e.shiftKey);
       }
     }
-    else{ isPainting=true; applyPaint(isoStr); }
+    else{
+      // Beim tatsächlichen Mausklick beginnen wir mit dem Malen.
+      isPainting=true;
+      applyPaint(isoStr);
+      e.preventDefault();
+    }
   });
   calendar.addEventListener('mouseover', function(e){
     var row=e.target.closest('.day-row'); if(!row) return;
@@ -1647,6 +1656,7 @@ function init(){
       }
       return;
     }
+    // Nur während eines aktiven linken Maustasten-Ziehens malen.
     if(!isPainting || moveMode) return;
     applyPaint(row.dataset.iso);
   });
