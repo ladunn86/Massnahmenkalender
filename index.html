@@ -86,6 +86,24 @@
   .floating button{background:#2c313c; border-color:#3a4150; color:#fff; padding:5px 10px; font-size:12.5px;}
   .floating button:hover{background:#3a4150;}
   .floating select{padding:5px 6px; border-radius:6px; border:none;}
+
+  /* Druckansicht: nur Kalender und Zusammenfassung drucken. */
+  @media print{
+    @page{size:landscape;margin:8mm;}
+    body{background:#fff !important;font-size:10px;}
+    #app{max-width:none;padding:0;}
+    #app > .panel,
+    #stickyTop,
+    #limitWarnings,
+    #selectionToolbar,
+    #categoryModal,
+    #kalendariumModal,
+    #aboutModal,
+    #appVersionFooter{display:none !important;}
+    #calendar,#summary{display:block !important;}
+    #calendar{break-inside:auto;}
+    button,input,select,textarea{display:none !important;}
+  }
 </style>
 </head>
 <body>
@@ -123,6 +141,8 @@
         <button id="loadBtn">Laden (JSON)</button>
         <button id="exportBtn" class="primary">Excel-Export</button>
         <button id="kalWordBtn" class="primary">📅 Wordexport Kalendarium</button>
+        <button id="printBtn">🖨️ Drucken</button>
+        <button id="aboutBtn">Über</button>
       </div>
     </div>
   </div>
@@ -146,6 +166,30 @@
 
   <div id="calendar"></div>
   <div id="summary"></div>
+</div>
+
+
+<div id="aboutModal" class="modal hidden">
+  <div class="modal-box" style="max-width:520px;">
+    <h3>Über den Maßnahmenkalender Planer</h3>
+    <div style="line-height:1.6;">
+      <p><strong>Maßnahmenkalender Planer</strong></p>
+      <p>Version 2.1.0</p>
+      <p>© 2026 arvaport Dienstleistungsgesellschaft mbH</p>
+      <p style="color:#6b7280;font-size:12px;">
+        Diese Version enthält automatische lokale Sicherungen, Druckfunktion
+        und eine Übersicht der verwendeten Drittanbieter-Komponenten.
+      </p>
+      <p style="color:#6b7280;font-size:12px;">
+        Lizenzinformationen: siehe <code>THIRD-PARTY-LICENSES.txt</code>
+        im Projekt.
+      </p>
+    </div>
+    <div class="modal-actions">
+      <div></div>
+      <button id="aboutCloseBtn" class="primary">Schließen</button>
+    </div>
+  </div>
 </div>
 
 <div id="categoryModal" class="modal hidden">
@@ -193,11 +237,11 @@
 <script>
 /* ============================================================
    VERSION / COPYRIGHT
-   Version 2.0.0 – zusammengeführte Maßnahmenkalender-Version
+   Version 2.1.0 – zusammengeführte Maßnahmenkalender-Version
    © 2026 Arno Faulwasser
    © 2026 arvaport Dienstleistungsgesellschaft mbH
    ============================================================ */
-var APP_VERSION = '2.0.0';
+var APP_VERSION = '2.1.0';
 var KB_ASSETS = {
   "contentTypes": "PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPFR5cGVzIHhtbG5zPSJodHRwOi8vc2NoZW1hcy5vcGVueG1sZm9ybWF0cy5vcmcvcGFja2FnZS8yMDA2L2NvbnRlbnQtdHlwZXMiPjxEZWZhdWx0IEV4dGVuc2lvbj0iZm50ZGF0YSIgQ29udGVudFR5cGU9ImFwcGxpY2F0aW9uL3gtZm9udGRhdGEiLz48RGVmYXVsdCBFeHRlbnNpb249ImpwZWciIENvbnRlbnRUeXBlPSJpbWFnZS9qcGVnIi8+PERlZmF1bHQgRXh0ZW5zaW9uPSJwbmciIENvbnRlbnRUeXBlPSJpbWFnZS9wbmciLz48RGVmYXVsdCBFeHRlbnNpb249InJlbHMiIENvbnRlbnRUeXBlPSJhcHBsaWNhdGlvbi92bmQub3BlbnhtbGZvcm1hdHMtcGFja2FnZS5yZWxhdGlvbnNoaXBzK3htbCIvPjxEZWZhdWx0IEV4dGVuc2lvbj0ieG1sIiBDb250ZW50VHlwZT0iYXBwbGljYXRpb24veG1sIi8+PE92ZXJyaWRlIFBhcnROYW1lPSIvZG9jUHJvcHMvY29yZS54bWwiIENvbnRlbnRUeXBlPSJhcHBsaWNhdGlvbi92bmQub3BlbnhtbGZvcm1hdHMtcGFja2FnZS5jb3JlLXByb3BlcnRpZXMreG1sIi8+PE92ZXJyaWRlIFBhcnROYW1lPSIvZG9jUHJvcHMvYXBwLnhtbCIgQ29udGVudFR5cGU9ImFwcGxpY2F0aW9uL3ZuZC5vcGVueG1sZm9ybWF0cy1vZmZpY2Vkb2N1bWVudC5leHRlbmRlZC1wcm9wZXJ0aWVzK3htbCIvPjxPdmVycmlkZSBQYXJ0TmFtZT0iL3dvcmQvZG9jdW1lbnQueG1sIiBDb250ZW50VHlwZT0iYXBwbGljYXRpb24vdm5kLm9wZW54bWxmb3JtYXRzLW9mZmljZWRvY3VtZW50LndvcmRwcm9jZXNzaW5nbWwuZG9jdW1lbnQubWFpbit4bWwiLz48T3ZlcnJpZGUgUGFydE5hbWU9Ii93b3JkL3N0eWxlcy54bWwiIENvbnRlbnRUeXBlPSJhcHBsaWNhdGlvbi92bmQub3BlbnhtbGZvcm1hdHMtb2ZmaWNlZG9jdW1lbnQud29yZHByb2Nlc3NpbmdtbC5zdHlsZXMreG1sIi8+PE92ZXJyaWRlIFBhcnROYW1lPSIvd29yZC9oZWFkZXIxLnhtbCIgQ29udGVudFR5cGU9ImFwcGxpY2F0aW9uL3ZuZC5vcGVueG1sZm9ybWF0cy1vZmZpY2Vkb2N1bWVudC53b3JkcHJvY2Vzc2luZ21sLmhlYWRlcit4bWwiLz48T3ZlcnJpZGUgUGFydE5hbWU9Ii93b3JkL251bWJlcmluZy54bWwiIENvbnRlbnRUeXBlPSJhcHBsaWNhdGlvbi92bmQub3BlbnhtbGZvcm1hdHMtb2ZmaWNlZG9jdW1lbnQud29yZHByb2Nlc3NpbmdtbC5udW1iZXJpbmcreG1sIi8+PE92ZXJyaWRlIFBhcnROYW1lPSIvd29yZC9mb250VGFibGUueG1sIiBDb250ZW50VHlwZT0iYXBwbGljYXRpb24vdm5kLm9wZW54bWxmb3JtYXRzLW9mZmljZWRvY3VtZW50LndvcmRwcm9jZXNzaW5nbWwuZm9udFRhYmxlK3htbCIvPjxPdmVycmlkZSBQYXJ0TmFtZT0iL3dvcmQvZm9vdGVyMS54bWwiIENvbnRlbnRUeXBlPSJhcHBsaWNhdGlvbi92bmQub3BlbnhtbGZvcm1hdHMtb2ZmaWNlZG9jdW1lbnQud29yZHByb2Nlc3NpbmdtbC5mb290ZXIreG1sIi8+PE92ZXJyaWRlIFBhcnROYW1lPSIvd29yZC9zZXR0aW5ncy54bWwiIENvbnRlbnRUeXBlPSJhcHBsaWNhdGlvbi92bmQub3BlbnhtbGZvcm1hdHMtb2ZmaWNlZG9jdW1lbnQud29yZHByb2Nlc3NpbmdtbC5zZXR0aW5ncyt4bWwiLz48T3ZlcnJpZGUgUGFydE5hbWU9Ii93b3JkL3RoZW1lL3RoZW1lMS54bWwiIENvbnRlbnRUeXBlPSJhcHBsaWNhdGlvbi92bmQub3BlbnhtbGZvcm1hdHMtb2ZmaWNlZG9jdW1lbnQudGhlbWUreG1sIi8+CjwvVHlwZXM+",
   "rootRels": "PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPFJlbGF0aW9uc2hpcHMgeG1sbnM9Imh0dHA6Ly9zY2hlbWFzLm9wZW54bWxmb3JtYXRzLm9yZy9wYWNrYWdlLzIwMDYvcmVsYXRpb25zaGlwcyI+PFJlbGF0aW9uc2hpcCBJZD0icklkMSIgVHlwZT0iaHR0cDovL3NjaGVtYXMub3BlbnhtbGZvcm1hdHMub3JnL3BhY2thZ2UvMjAwNi9yZWxhdGlvbnNoaXBzL21ldGFkYXRhL2NvcmUtcHJvcGVydGllcyIgVGFyZ2V0PSJkb2NQcm9wcy9jb3JlLnhtbCIvPjxSZWxhdGlvbnNoaXAgSWQ9InJJZDIiIFR5cGU9Imh0dHA6Ly9zY2hlbWFzLm9wZW54bWxmb3JtYXRzLm9yZy9vZmZpY2VEb2N1bWVudC8yMDA2L3JlbGF0aW9uc2hpcHMvZXh0ZW5kZWQtcHJvcGVydGllcyIgVGFyZ2V0PSJkb2NQcm9wcy9hcHAueG1sIi8+PFJlbGF0aW9uc2hpcCBJZD0icklkMyIgVHlwZT0iaHR0cDovL3NjaGVtYXMub3BlbnhtbGZvcm1hdHMub3JnL29mZmljZURvY3VtZW50LzIwMDYvcmVsYXRpb25zaGlwcy9vZmZpY2VEb2N1bWVudCIgVGFyZ2V0PSJ3b3JkL2RvY3VtZW50LnhtbCIvPgo8L1JlbGF0aW9uc2hpcHM+",
@@ -1698,14 +1742,116 @@ async function generateKlassenbuchGesamt(){
   }
 }
 
+
+/* ---------------- Version 2.1.0 Zusatzfunktionen ---------------- */
+var AUTO_BACKUP_KEY = 'massnahmenkalender_auto_backup_v2';
+var AUTO_BACKUP_TIME_KEY = 'massnahmenkalender_auto_backup_time_v2';
+
+function buildAutoBackupData(){
+  return {
+    name: state.name,
+    bundesland: state.bundesland,
+    rangeStart: iso(state.rangeStart),
+    numMonths: state.numMonths,
+    categories: state.categories,
+    dayData: state.dayData,
+    savedAt: new Date().toISOString()
+  };
+}
+
+function saveAutoBackup(){
+  try{
+    localStorage.setItem(AUTO_BACKUP_KEY, JSON.stringify(buildAutoBackupData()));
+    localStorage.setItem(AUTO_BACKUP_TIME_KEY, String(Date.now()));
+  }catch(err){
+    console.warn('Automatische Sicherung konnte nicht gespeichert werden:', err);
+  }
+}
+
+function hasAutoBackup(){
+  try{
+    return !!localStorage.getItem(AUTO_BACKUP_KEY);
+  }catch(err){ return false; }
+}
+
+function restoreAutoBackup(){
+  try{
+    var raw=localStorage.getItem(AUTO_BACKUP_KEY);
+    if(!raw) return false;
+    var data=JSON.parse(raw);
+    if(!data || !data.dayData || !Array.isArray(data.categories)) return false;
+
+    state.name=data.name||state.name;
+    state.bundesland=data.bundesland||state.bundesland;
+    if(data.rangeStart){
+      var d=parseIso(data.rangeStart);
+      if(d) state.rangeStart=d;
+    }
+    if(data.numMonths) state.numMonths=Math.max(1,Math.min(36,parseInt(data.numMonths,10)||12));
+    state.categories=data.categories;
+    state.dayData=data.dayData;
+    return true;
+  }catch(err){
+    console.warn('Automatische Sicherung konnte nicht wiederhergestellt werden:', err);
+    return false;
+  }
+}
+
+function maybeRestoreAutoBackup(){
+  if(!hasAutoBackup()) return;
+  var when=localStorage.getItem(AUTO_BACKUP_TIME_KEY);
+  var whenText='';
+  if(when){
+    var d=new Date(parseInt(when,10));
+    if(!isNaN(d.getTime())) whenText=d.toLocaleString('de-DE');
+  }
+  var msg='Es wurde eine automatische Sicherung';
+  if(whenText) msg+=' vom '+whenText;
+  msg+=' gefunden.\n\nMöchtest du diese Sicherung wiederherstellen?';
+  if(confirm(msg)){
+    if(restoreAutoBackup()){
+      alert('Die automatische Sicherung wurde wiederhergestellt.');
+    }else{
+      alert('Die automatische Sicherung konnte leider nicht gelesen werden.');
+    }
+  }
+}
+
+function clearAutoBackup(){
+  try{
+    localStorage.removeItem(AUTO_BACKUP_KEY);
+    localStorage.removeItem(AUTO_BACKUP_TIME_KEY);
+  }catch(err){}
+}
+
+function printCalendar(){
+  try{
+    window.print();
+  }catch(err){
+    alert('Der Druckdialog konnte nicht geöffnet werden. Bitte versuchen Sie es erneut.');
+    console.error(err);
+  }
+}
+
+function openAboutModal(){
+  document.getElementById('aboutModal').classList.remove('hidden');
+}
+function closeAboutModal(){
+  document.getElementById('aboutModal').classList.add('hidden');
+}
+
 /* ---------------- wiring ---------------- */
 function init(){
+  maybeRestoreAutoBackup();
   document.getElementById('startInput').value=fmtMonthYear(state.rangeStart);
+  document.getElementById('monthsInput').value=state.numMonths;
+  document.getElementById('nameInput').value=state.name||'Neue Maßnahme';
+  document.getElementById('blSelect').value=state.bundesland||'NW';
 
   document.getElementById('kbFpuBlpBtn').addEventListener('click', function(){ generateKlassenbuchMulti(['fpu','blp'], 'FpU_BLP'); });
   document.getElementById('kbGesamtBtn').addEventListener('click', generateKlassenbuchGesamt);
 
-  document.getElementById('nameInput').addEventListener('input', function(){ state.name=this.value; });
+  document.getElementById('nameInput').addEventListener('input', function(){ state.name=this.value; saveAutoBackup(); });
   document.getElementById('startInput').addEventListener('input', function(){
     var digits=this.value.replace(/[^0-9]/g,'').slice(0,6);
     this.value = digits.length>2 ? (digits.slice(0,2)+'/'+digits.slice(2)) : digits;
@@ -1716,20 +1862,24 @@ function init(){
     if(!d){ alert('Bitte das Startdatum im Format MM/JJJJ eingeben, z. B. 08/2027.'); this.value=fmtMonthYear(state.rangeStart); return; }
     state.rangeStart=d;
     renderCalendar();
+    saveAutoBackup();
   });
   document.getElementById('monthsInput').addEventListener('change', function(){
     var v=parseInt(this.value,10); if(isNaN(v)) v=12; v=Math.max(1,Math.min(36,v));
-    this.value=v; state.numMonths=v; renderCalendar();
+    this.value=v; state.numMonths=v; renderCalendar(); saveAutoBackup();
   });
   document.getElementById('blSelect').addEventListener('change', function(){
-    state.bundesland=this.value; clearHolCache(); renderCalendar();
+    state.bundesland=this.value; clearHolCache(); renderCalendar(); saveAutoBackup();
   });
   document.getElementById('newBtn').addEventListener('click', function(){
-    if(confirm('Alle eingefärbten Tage dieser Maßnahme löschen?')){ state.dayData={}; selection=null; renderCalendar(); }
+    if(confirm('Alle eingefärbten Tage dieser Maßnahme löschen?')){ state.dayData={}; selection=null; renderCalendar(); saveAutoBackup(); }
   });
-  document.getElementById('saveBtn').addEventListener('click', saveJson);
+  document.getElementById('saveBtn').addEventListener('click', function(){ saveJson(); saveAutoBackup(); });
   document.getElementById('loadBtn').addEventListener('click', function(){ document.getElementById('fileInput').click(); });
-  document.getElementById('fileInput').addEventListener('change', function(){ if(this.files[0]) loadJsonFile(this.files[0]); this.value=''; });
+  document.getElementById('printBtn').addEventListener('click', printCalendar);
+  document.getElementById('aboutBtn').addEventListener('click', openAboutModal);
+  document.getElementById('aboutCloseBtn').addEventListener('click', closeAboutModal);
+  document.getElementById('fileInput').addEventListener('change', function(){ if(this.files[0]){ loadJsonFile(this.files[0]); setTimeout(saveAutoBackup, 100); } this.value=''; });
   document.getElementById('exportBtn').addEventListener('click', exportExcel);
   document.getElementById('kalWordBtn').addEventListener('click', openKalendariumModal);
   document.getElementById('kalCancelBtn').addEventListener('click', closeKalendariumModal);
@@ -1796,6 +1946,7 @@ function init(){
       if(delta!==0){ shiftSelection(delta); }
       else{ renderCalendar(); }
     }
+    saveAutoBackup();
   });
 
   document.getElementById('catCancelBtn').addEventListener('click', closeCategoryModal);
@@ -1815,7 +1966,7 @@ function init(){
       state.categories.push({id:newCatId(), name:name, color:color, ue:ue, soll:soll});
     }
     closeCategoryModal();
-    renderCatToolbar(); renderCalendar();
+    renderCatToolbar(); renderCalendar(); saveAutoBackup();
   });
   document.getElementById('catDeleteBtn').addEventListener('click', function(){
     var id=document.getElementById('catEditingId').value;
@@ -1827,14 +1978,18 @@ function init(){
     state.categories=state.categories.filter(function(c){ return c.id!==id; });
     if(activeCat===id) activeCat=state.categories[0].id;
     closeCategoryModal();
-    renderCatToolbar(); renderCalendar();
+    renderCatToolbar(); renderCalendar(); saveAutoBackup();
   });
 
   renderCatToolbar();
   renderCalendar();
 }
 
-document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('DOMContentLoaded', function(){
+  init();
+  // Lokale automatische Sicherung alle 5 Minuten; zusätzlich nach wichtigen Änderungen.
+  setInterval(saveAutoBackup, 5*60*1000);
+});
 })();
 
 /* Sicherheit für die Maussteuerung:
@@ -1846,9 +2001,17 @@ window.addEventListener('blur', function(){
   }
 });
 
+window.addEventListener('error', function(e){
+  console.error(e.error || e.message);
+  // Keine technische Fehlermeldung aufdrängen; nur bei sichtbaren Laufzeitfehlern informieren.
+  if(e && e.message && !document.hidden){
+    console.warn('Maßnahmenkalender-Fehler:', e.message);
+  }
+});
+
 </script>
-<div id="appVersionFooter" style="position:fixed;left:0;right:0;bottom:4px;text-align:center;font-size:10px;color:#9aa0a6;opacity:.65;z-index:9999;pointer-events:none;background:transparent;">
-  © 2026 arvaport Dienstleistungsgesellschaft mbH · Version 2.0.0
+<div id="appVersionFooter"  style="position:fixed;left:0;right:0;bottom:4px;text-align:center;font-size:10px;color:#9aa0a6;opacity:.65;z-index:9999;pointer-events:none;background:transparent;">
+  © 2026 arvaport Dienstleistungsgesellschaft mbH · Version 2.1.0
 </div>
 </body>
 </html>
