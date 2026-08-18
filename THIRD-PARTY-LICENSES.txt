@@ -1,0 +1,37 @@
+Drittanbieter-Lizenzen – Maßnahmenkalender Planer
+====================================================
+
+Version der Anwendung: 2.1.0
+Copyright der Anwendung: © 2026 arvaport Dienstleistungsgesellschaft mbH
+Code-Hinweis: © 2026 Arno Faulwasser
+
+Diese Datei dokumentiert die derzeit im Projekt erkennbaren Drittanbieter-
+Komponenten. Bei einer späteren Erweiterung der Abhängigkeiten muss diese
+Liste entsprechend ergänzt werden.
+
+1. Electron 31.0.0
+------------------
+Lizenz: MIT
+Projekt: https://github.com/electron/electron
+Die Electron-Projektdateien enthalten die jeweils maßgeblichen Lizenz- und
+Copyright-Hinweise. Für die ausgelieferte Electron-Runtime sind diese
+Hinweise zu beachten.
+
+2. electron-builder
+-------------------
+Lizenz: MIT
+Projekt: https://github.com/electron-userland/electron-builder
+
+3. JSZip 3.10.1
+---------------
+Lizenz: MIT OR GPL-3.0-or-later
+Projekt: https://github.com/Stuk/jszip
+In dieser Anwendung wird JSZip für die Erstellung der Word-/ZIP-Dateien
+verwendet.
+
+Hinweis
+-------
+Dies ist eine Projektübersicht und keine individuelle Rechtsberatung.
+Bei einer kommerziellen Weitergabe sollte die vollständige Lizenz- und
+Copyright-Dokumentation der tatsächlich ausgelieferten Abhängigkeiten
+geprüft und zusammen mit der Anwendung bereitgestellt werden.
