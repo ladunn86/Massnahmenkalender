@@ -1,20 +1,21 @@
 {
   "name": "massnahmenkalender",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Massnahmenkalender Desktop",
   "main": "main.js",
   "scripts": {
     "start": "electron ."
   },
   "devDependencies": {
-    "electron": "^31.0.0",
+    "electron": "31.0.0",
     "electron-builder": "^24.13.3"
   },
   "build": {
-    "appId": "de.massnahmenkalender.app",
+    "appid": "de.massnahmenkalender.app",
     "productName": "Massnahmenkalender",
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "icons/icon.ico"
     }
   }
 }
