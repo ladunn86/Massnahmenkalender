@@ -11,7 +11,7 @@
     "electron-builder": "^24.13.3"
   },
   "build": {
-    "appid": "de.massnahmenkalender.app",
+    "appId": "de.massnahmenkalender.app",
     "productName": "Massnahmenkalender",
     "win": {
       "target": "nsis",
