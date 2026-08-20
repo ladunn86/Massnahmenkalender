@@ -1733,9 +1733,21 @@ async function generateKlassenbuchGesamt(){
 
 /* ---------------- Version 2.1.0 Zusatzfunktionen ---------------- */
 
-var hasUnsavedChanges = false;
-function markUnsavedChanges(){ hasUnsavedChanges = true; }
-function markSaved(){ hasUnsavedChanges = false; }
+/* ============================================================
+   SPEICHERSTATUS
+   Keine automatische Sicherung.
+   Beim Schließen wird nur bei ungespeicherten Änderungen gefragt.
+   © 2026 Martin Hummel / Arno Faulwasser
+   ============================================================ */
+window.hasUnsavedChanges = false;
+
+function markUnsavedChanges(){
+  window.hasUnsavedChanges = true;
+}
+
+function markSaved(){
+  window.hasUnsavedChanges = false;
+}
 
 function openAboutModal(){
   document.getElementById('aboutModal').classList.remove('hidden');
