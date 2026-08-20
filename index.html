@@ -701,14 +701,32 @@ function openCategoryModal(id){
 function closeCategoryModal(){ document.getElementById('categoryModal').classList.add('hidden'); }
 
 /* ---------------- JSON save/load ---------------- */
-function saveJson(){
-  markSaved();
-  var data={ name:state.name, bundesland:state.bundesland, rangeStart:iso(state.rangeStart), numMonths:state.numMonths, categories:state.categories, dayData:state.dayData };
-  var blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
-  var a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download=(state.name||'Massnahme').replace(/[^\w\-]+/g,'_')+'.json';
-  document.body.appendChild(a); a.click(); a.remove();
+async function saveJson(){
+  var data={
+    name:state.name,
+    bundesland:state.bundesland,
+    rangeStart:iso(state.rangeStart),
+    numMonths:state.numMonths,
+    categories:state.categories,
+    dayData:state.dayData
+  };
+
+  if(
+    !window.electronAPI ||
+    typeof window.electronAPI.saveJson !== 'function'
+  ){
+    alert('Die Speicherfunktion ist nicht verfügbar.');
+    return false;
+  }
+
+  var result = await window.electronAPI.saveJson(data);
+
+  if(result && result.saved){
+    markSaved();
+    return true;
+  }
+
+  return false;
 }
 function loadJsonFile(file){
   markSaved();
