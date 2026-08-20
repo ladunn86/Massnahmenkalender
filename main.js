@@ -21,123 +21,68 @@ function createWindow() {
 
   mainWindow.on('close', async (event) => {
 
-    // Wenn das Schließen bereits bestätigt wurde,
-    // darf Electron das Fenster schließen.
     if (closingConfirmed) {
       return;
     }
 
-    // Zunächst Schließen verhindern.
     event.preventDefault();
 
     let hasUnsavedChanges = false;
 
     try {
-      hasUnsavedChanges = await mainWindow.webContents.executeJavaScript(`
-        (function () {
-
-          if (
-            typeof window.__massnahmenHasUnsavedChanges === 'function'
-          ) {
-            return window.__massnahmenHasUnsavedChanges();
-          }
-
-          if (
-            typeof window.hasUnsavedChanges !== 'undefined'
-          ) {
-            return window.hasUnsavedChanges === true;
-          }
-
-          return false;
-
-        })()
-      `, true);
-
+      hasUnsavedChanges = await mainWindow.webContents.executeJavaScript(
+        'window.hasUnsavedChanges === true',
+        true
+      );
     } catch (error) {
-
       console.error(
         'Fehler beim Prüfen des Speicherstatus:',
         error
       );
-
-      hasUnsavedChanges = false;
     }
 
-    // -------------------------------------------------------
-    // KEINE ÄNDERUNGEN
-    // -------------------------------------------------------
-
+    // Keine Änderungen → direkt schließen
     if (!hasUnsavedChanges) {
-
       closingConfirmed = true;
       mainWindow.close();
-
       return;
     }
 
-    // -------------------------------------------------------
-    // UNGESPEICHERTE ÄNDERUNGEN
-    // -------------------------------------------------------
+    // Ungespeicherte Änderungen → Nachfrage
+    const result = await dialog.showMessageBox(mainWindow, {
+      type: 'question',
+      title: 'Ungespeicherte Änderungen',
+      message: 'Es gibt ungespeicherte Änderungen.',
+      detail: 'Möchtest du die Änderungen vor dem Schließen speichern?',
+      buttons: [
+        'Speichern',
+        'Nicht speichern',
+        'Abbrechen'
+      ],
+      defaultId: 0,
+      cancelId: 2,
+      noLink: true
+    });
 
-    const result = await dialog.showMessageBox(
-      mainWindow,
-      {
-        type: 'question',
-
-        title: 'Ungespeicherte Änderungen',
-
-        message:
-          'Es gibt ungespeicherte Änderungen.',
-
-        detail:
-          'Möchtest du die Änderungen vor dem Schließen speichern?',
-
-        buttons: [
-          'Speichern',
-          'Nicht speichern',
-          'Abbrechen'
-        ],
-
-        defaultId: 0,
-        cancelId: 2,
-        noLink: true
-      }
-    );
-
-    // -------------------------------------------------------
-    // ABBRECHEN
-    // -------------------------------------------------------
-
+    // Abbrechen
     if (result.response === 2) {
-
-      // Fenster bleibt geöffnet.
       return;
     }
 
-    // -------------------------------------------------------
-    // NICHT SPEICHERN
-    // -------------------------------------------------------
-
+    // Nicht speichern
     if (result.response === 1) {
-
       closingConfirmed = true;
-
       mainWindow.close();
-
       return;
     }
 
-    // -------------------------------------------------------
-    // SPEICHERN
-    // -------------------------------------------------------
-
+    // Speichern
     if (result.response === 0) {
-
       try {
 
-        await mainWindow.webContents.executeJavaScript(`
+        await mainWindow.webContents.executeJavaScript(
+          `
           (async function () {
-
             if (typeof saveJson === 'function') {
               await saveJson();
             }
@@ -145,14 +90,12 @@ function createWindow() {
             if (typeof markSaved === 'function') {
               markSaved();
             }
-
-            return true;
-
           })()
-        `, true);
+          `,
+          true
+        );
 
         closingConfirmed = true;
-
         mainWindow.close();
 
       } catch (error) {
@@ -162,31 +105,17 @@ function createWindow() {
           error
         );
 
-        await dialog.showMessageBox(
-          mainWindow,
-          {
-            type: 'error',
-
-            title: 'Speichern fehlgeschlagen',
-
-            message:
-              'Die Änderungen konnten nicht gespeichert werden.',
-
-            detail:
-              String(error),
-
-            buttons: ['OK']
-          }
-        );
+        await dialog.showMessageBox(mainWindow, {
+          type: 'error',
+          title: 'Speichern fehlgeschlagen',
+          message: 'Die Änderungen konnten nicht gespeichert werden.',
+          detail: String(error),
+          buttons: ['OK']
+        });
       }
     }
   });
 }
-
-
-// ---------------------------------------------------------
-// ELECTRON START
-// ---------------------------------------------------------
 
 app.whenReady().then(() => {
 
@@ -194,20 +123,13 @@ app.whenReady().then(() => {
 
   app.on('activate', () => {
 
-    if (
-      BrowserWindow.getAllWindows().length === 0
-    ) {
+    if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();
     }
 
   });
 
 });
-
-
-// ---------------------------------------------------------
-// WINDOWS SCHLIESSEN
-// ---------------------------------------------------------
 
 app.on('window-all-closed', () => {
 
