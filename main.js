@@ -86,17 +86,19 @@ function createWindow() {
         const saved = await mainWindow.webContents.executeJavaScript(
           `
           (async function () {
-            if (typeof saveJson === 'function') {
-              return await saveJson();
+
+            if (typeof window.saveJson === 'function') {
+              return await window.saveJson();
             }
 
             return false;
+
           })()
           `,
           true
         );
 
-        // Benutzer hat im Speichern-Dialog auf Abbrechen geklickt
+        // Der Benutzer hat den Speichern-Dialog abgebrochen
         if (!saved) {
           return;
         }
@@ -124,9 +126,9 @@ function createWindow() {
 }
 
 
-// ---------------------------------------------------------
+// =========================================================
 // SPEICHERDIALOG
-// ---------------------------------------------------------
+// =========================================================
 
 ipcMain.handle('save-json', async (event, data) => {
 
@@ -166,7 +168,7 @@ ipcMain.handle('save-json', async (event, data) => {
     ]
   });
 
-  // Benutzer hat Abbrechen gedrückt
+  // Benutzer hat Abbrechen gewählt
   if (result.canceled || !result.filePath) {
     return {
       saved: false
@@ -186,9 +188,9 @@ ipcMain.handle('save-json', async (event, data) => {
 });
 
 
-// ---------------------------------------------------------
+// =========================================================
 // ELECTRON START
-// ---------------------------------------------------------
+// =========================================================
 
 app.whenReady().then(() => {
 
@@ -201,15 +203,14 @@ app.whenReady().then(() => {
     ) {
       createWindow();
     }
-
   });
 
 });
 
 
-// ---------------------------------------------------------
+// =========================================================
 // WINDOWS SCHLIESSEN
-// ---------------------------------------------------------
+// =========================================================
 
 app.on('window-all-closed', () => {
 
