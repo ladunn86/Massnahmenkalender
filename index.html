@@ -159,7 +159,7 @@
       <p>Version 2.1.0</p>
       <p>© 2026 arvaport Dienstleistungsgesellschaft mbH</p>
       <p style="color:#6b7280;font-size:12px;">
-        Diese Version enthält automatische lokale Sicherungen, Druckfunktion
+        Diese Version enthält lokale Speicherung und eine Abfrage beim Schließen
         und eine Übersicht der verwendeten Drittanbieter-Komponenten.
       </p>
       <p style="color:#6b7280;font-size:12px;">
@@ -220,7 +220,7 @@
 /* ============================================================
    VERSION / COPYRIGHT
    Version 2.1.0 – zusammengeführte Maßnahmenkalender-Version
-   © 2026 Arno Faulwasser
+   © 2026 Martin Hummel / Arno Faulwasser
    © 2026 arvaport Dienstleistungsgesellschaft mbH
    ============================================================ */
 var APP_VERSION = '2.1.0';
@@ -702,13 +702,13 @@ function closeCategoryModal(){ document.getElementById('categoryModal').classLis
 
 /* ---------------- JSON save/load ---------------- */
 function saveJson(){
+  markSaved();
   var data={ name:state.name, bundesland:state.bundesland, rangeStart:iso(state.rangeStart), numMonths:state.numMonths, categories:state.categories, dayData:state.dayData };
   var blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   var a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
   a.download=(state.name||'Massnahme').replace(/[^\w\-]+/g,'_')+'.json';
   document.body.appendChild(a); a.click(); a.remove();
-  markSaved();
 }
 function loadJsonFile(file){
   markSaved();
@@ -1732,50 +1732,10 @@ async function generateKlassenbuchGesamt(){
 
 
 /* ---------------- Version 2.1.0 Zusatzfunktionen ---------------- */
-var AUTO_BACKUP_KEY = 'massnahmenkalender_auto_backup_v2';
-var AUTO_BACKUP_TIME_KEY = 'massnahmenkalender_auto_backup_time_v2';
 
-function buildAutoBackupData(){
-  return {
-    name: state.name,
-    bundesland: state.bundesland,
-    rangeStart: iso(state.rangeStart),
-    numMonths: state.numMonths,
-    categories: state.categories,
-    dayData: state.dayData,
-    savedAt: new Date().toISOString()
-  };
-}
-
-
-function hasAutoBackup(){
-  try{
-    return !!localStorage.getItem(AUTO_BACKUP_KEY);
-  }catch(err){ return false; }
-}
-
-
-function maybeRestoreAutoBackup(){
-  if(!hasAutoBackup()) return;
-  var when=localStorage.getItem(AUTO_BACKUP_TIME_KEY);
-  var whenText='';
-  if(when){
-    var d=new Date(parseInt(when,10));
-    if(!isNaN(d.getTime())) whenText=d.toLocaleString('de-DE');
-  }
-  var msg='Es wurde eine automatische Sicherung';
-  if(whenText) msg+=' vom '+whenText;
-  msg+=' gefunden.\n\nMöchtest du diese Sicherung wiederherstellen?';
-  if(confirm(msg)){
-    if(restoreAutoBackup()){
-      alert('Die automatische Sicherung wurde wiederhergestellt.');
-    }else{
-      alert('Die automatische Sicherung konnte leider nicht gelesen werden.');
-    }
-  }
-}
-
-
+var hasUnsavedChanges = false;
+function markUnsavedChanges(){ hasUnsavedChanges = true; }
+function markSaved(){ hasUnsavedChanges = false; }
 
 function openAboutModal(){
   document.getElementById('aboutModal').classList.remove('hidden');
@@ -1786,7 +1746,6 @@ function closeAboutModal(){
 
 /* ---------------- wiring ---------------- */
 function init(){
-  maybeRestoreAutoBackup();
   document.getElementById('startInput').value=fmtMonthYear(state.rangeStart);
   document.getElementById('monthsInput').value=state.numMonths;
   document.getElementById('nameInput').value=state.name||'Neue Maßnahme';
@@ -1795,7 +1754,7 @@ function init(){
   document.getElementById('kbFpuBlpBtn').addEventListener('click', function(){ generateKlassenbuchMulti(['fpu','blp'], 'FpU_BLP'); });
   document.getElementById('kbGesamtBtn').addEventListener('click', generateKlassenbuchGesamt);
 
-  document.getElementById('nameInput').addEventListener('input', function(){ state.name=this.value; saveAutoBackup(); });
+  document.getElementById('nameInput').addEventListener('input', function(){ state.name=this.value; markUnsavedChanges(); });
   document.getElementById('startInput').addEventListener('input', function(){
     var digits=this.value.replace(/[^0-9]/g,'').slice(0,6);
     this.value = digits.length>2 ? (digits.slice(0,2)+'/'+digits.slice(2)) : digits;
@@ -1805,24 +1764,24 @@ function init(){
     var d=parseMonthYear(this.value);
     if(!d){ alert('Bitte das Startdatum im Format MM/JJJJ eingeben, z. B. 08/2027.'); this.value=fmtMonthYear(state.rangeStart); return; }
     state.rangeStart=d;
+    markUnsavedChanges();
     renderCalendar();
-    saveAutoBackup();
   });
   document.getElementById('monthsInput').addEventListener('change', function(){
     var v=parseInt(this.value,10); if(isNaN(v)) v=12; v=Math.max(1,Math.min(36,v));
-    this.value=v; state.numMonths=v; renderCalendar(); saveAutoBackup();
+    this.value=v; state.numMonths=v; markUnsavedChanges(); renderCalendar();
   });
   document.getElementById('blSelect').addEventListener('change', function(){
-    state.bundesland=this.value; clearHolCache(); renderCalendar(); saveAutoBackup();
+    state.bundesland=this.value; clearHolCache(); markUnsavedChanges(); renderCalendar();
   });
   document.getElementById('newBtn').addEventListener('click', function(){
-    if(confirm('Alle eingefärbten Tage dieser Maßnahme löschen?')){ state.dayData={}; selection=null; renderCalendar(); saveAutoBackup(); }
+    if(confirm('Alle eingefärbten Tage dieser Maßnahme löschen?')){ state.dayData={}; selection=null; markUnsavedChanges(); renderCalendar(); }
   });
-  document.getElementById('saveBtn').addEventListener('click', function(){ saveJson(); saveAutoBackup(); });
+  document.getElementById('saveBtn').addEventListener('click', function(){ saveJson(); });
   document.getElementById('loadBtn').addEventListener('click', function(){ document.getElementById('fileInput').click(); });
   document.getElementById('aboutBtn').addEventListener('click', openAboutModal);
   document.getElementById('aboutCloseBtn').addEventListener('click', closeAboutModal);
-  document.getElementById('fileInput').addEventListener('change', function(){ if(this.files[0]){ loadJsonFile(this.files[0]); setTimeout(saveAutoBackup, 100); } this.value=''; });
+  document.getElementById('fileInput').addEventListener('change', function(){ if(this.files[0]){ loadJsonFile(this.files[0]); } this.value=''; });
   document.getElementById('exportBtn').addEventListener('click', exportExcel);
   document.getElementById('kalWordBtn').addEventListener('click', openKalendariumModal);
   document.getElementById('kalCancelBtn').addEventListener('click', closeKalendariumModal);
@@ -1877,6 +1836,7 @@ function init(){
     if(val===null) return;
     if(val.trim()===''){ delete cur.ueOverride; }
     else{ var num=parseFloat(val.replace(',','.')); if(!isNaN(num)) cur.ueOverride=num; }
+    markUnsavedChanges();
     renderCalendar();
   });
   document.addEventListener('mouseup', function(){
@@ -1889,7 +1849,6 @@ function init(){
       if(delta!==0){ shiftSelection(delta); }
       else{ renderCalendar(); }
     }
-    saveAutoBackup();
   });
 
   document.getElementById('catCancelBtn').addEventListener('click', closeCategoryModal);
@@ -1909,7 +1868,8 @@ function init(){
       state.categories.push({id:newCatId(), name:name, color:color, ue:ue, soll:soll});
     }
     closeCategoryModal();
-    renderCatToolbar(); renderCalendar(); saveAutoBackup();
+    markUnsavedChanges();
+    renderCatToolbar(); renderCalendar();
   });
   document.getElementById('catDeleteBtn').addEventListener('click', function(){
     var id=document.getElementById('catEditingId').value;
@@ -1921,7 +1881,8 @@ function init(){
     state.categories=state.categories.filter(function(c){ return c.id!==id; });
     if(activeCat===id) activeCat=state.categories[0].id;
     closeCategoryModal();
-    renderCatToolbar(); renderCalendar(); saveAutoBackup();
+    markUnsavedChanges();
+    renderCatToolbar(); renderCalendar();
   });
 
   renderCatToolbar();
@@ -1930,8 +1891,6 @@ function init(){
 
 document.addEventListener('DOMContentLoaded', function(){
   init();
-  // Lokale automatische Sicherung alle 5 Minuten; zusätzlich nach wichtigen Änderungen.
-  setInterval(saveAutoBackup, 5*60*1000);
 });
 })();
 
@@ -1950,29 +1909,6 @@ window.addEventListener('error', function(e){
   if(e && e.message && !document.hidden){
     console.warn('Maßnahmenkalender-Fehler:', e.message);
   }
-});
-
-
-/* ============================================================
-   SPEICHERSTATUS
-   Keine automatische Sicherung.
-   Beim Schließen wird nur bei ungespeicherten Änderungen gefragt.
-   © 2026 Martin Hummel / Arno Faulwasser
-   ============================================================ */
-var hasUnsavedChanges = false;
-
-function markUnsavedChanges(){
-  hasUnsavedChanges = true;
-}
-
-function markSaved(){
-  hasUnsavedChanges = false;
-}
-
-window.addEventListener('beforeunload', function(e){
-  if(!hasUnsavedChanges) return;
-  e.preventDefault();
-  e.returnValue = '';
 });
 
 </script>
