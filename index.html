@@ -728,6 +728,9 @@ async function saveJson(){
 
   return false;
 }
+
+window.saveJson = saveJson;
+
 function loadJsonFile(file){
   markSaved();
   var reader=new FileReader();
@@ -1948,20 +1951,15 @@ window.addEventListener('error', function(e){
    Der Status wird vom Renderer verwaltet und von main.js abgefragt.
    © 2026 Martin Hummel / Arno Faulwasser
    ============================================================ */
-var hasUnsavedChanges = false;
+window.hasUnsavedChanges = false;
 
 function markUnsavedChanges(){
-  hasUnsavedChanges = true;
+  window.hasUnsavedChanges = true;
 }
 
 function markSaved(){
-  hasUnsavedChanges = false;
+  window.hasUnsavedChanges = false;
 }
-
-/* Für main.js gut abfragbar. */
-window.__massnahmenHasUnsavedChanges = function(){
-  return hasUnsavedChanges === true;
-};
 
 </script>
 <div id="appVersionFooter"  style="position:fixed;left:0;right:0;bottom:4px;text-align:center;font-size:10px;color:#9aa0a6;opacity:.65;z-index:9999;pointer-events:none;background:transparent;">
