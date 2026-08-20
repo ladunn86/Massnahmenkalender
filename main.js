@@ -1,5 +1,6 @@
-const { app, BrowserWindow, dialog } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain } = require('electron');
 const path = require('path');
+const fs = require('fs');
 
 let mainWindow;
 let closingConfirmed = false;
@@ -12,8 +13,9 @@ function createWindow() {
     minHeight: 700,
 
     webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
-      contextIsolation: false
+      contextIsolation: true
     }
   });
 
@@ -78,22 +80,26 @@ function createWindow() {
 
     // Speichern
     if (result.response === 0) {
+
       try {
 
-        await mainWindow.webContents.executeJavaScript(
+        const saved = await mainWindow.webContents.executeJavaScript(
           `
           (async function () {
             if (typeof saveJson === 'function') {
-              await saveJson();
+              return await saveJson();
             }
 
-            if (typeof markSaved === 'function') {
-              markSaved();
-            }
+            return false;
           })()
           `,
           true
         );
+
+        // Benutzer hat im Speichern-Dialog auf Abbrechen geklickt
+        if (!saved) {
+          return;
+        }
 
         closingConfirmed = true;
         mainWindow.close();
@@ -117,19 +123,93 @@ function createWindow() {
   });
 }
 
+
+// ---------------------------------------------------------
+// SPEICHERDIALOG
+// ---------------------------------------------------------
+
+ipcMain.handle('save-json', async (event, data) => {
+
+  if (!data || typeof data !== 'object') {
+    throw new Error('Ungültige Speicherdaten.');
+  }
+
+  const safeName = String(data.name || 'Massnahme')
+    .replace(/[<>:"/\\|?*]/g, '_')
+    .replace(/[. ]+$/g, '')
+    .trim() || 'Massnahme';
+
+  const defaultPath = path.join(
+    app.getPath('documents'),
+    safeName + '.json'
+  );
+
+  const result = await dialog.showSaveDialog(mainWindow, {
+
+    title: 'Maßnahme speichern',
+
+    defaultPath: defaultPath,
+
+    filters: [
+      {
+        name: 'JSON-Datei',
+        extensions: ['json']
+      },
+      {
+        name: 'Alle Dateien',
+        extensions: ['*']
+      }
+    ],
+
+    properties: [
+      'showOverwriteConfirmation'
+    ]
+  });
+
+  // Benutzer hat Abbrechen gedrückt
+  if (result.canceled || !result.filePath) {
+    return {
+      saved: false
+    };
+  }
+
+  await fs.promises.writeFile(
+    result.filePath,
+    JSON.stringify(data, null, 2),
+    'utf8'
+  );
+
+  return {
+    saved: true,
+    filePath: result.filePath
+  };
+});
+
+
+// ---------------------------------------------------------
+// ELECTRON START
+// ---------------------------------------------------------
+
 app.whenReady().then(() => {
 
   createWindow();
 
   app.on('activate', () => {
 
-    if (BrowserWindow.getAllWindows().length === 0) {
+    if (
+      BrowserWindow.getAllWindows().length === 0
+    ) {
       createWindow();
     }
 
   });
 
 });
+
+
+// ---------------------------------------------------------
+// WINDOWS SCHLIESSEN
+// ---------------------------------------------------------
 
 app.on('window-all-closed', () => {
 
