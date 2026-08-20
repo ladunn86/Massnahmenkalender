@@ -584,6 +584,7 @@ function renderSummary(){
 
 /* ---------------- painting / selection interaction ---------------- */
 function applyPaint(isoStr){
+  markUnsavedChanges();
   if(activeCat==='_erase'){ delete state.dayData[isoStr]; }
   else{
     var cat=catById(activeCat);
@@ -604,6 +605,7 @@ function handleSelectClick(isoStr, shiftKey){
 }
 
 function shiftSelection(deltaDays){
+  markUnsavedChanges();
   if(!selection) return;
   var start=parseIso(selection.startIso), end=parseIso(selection.endIso);
   var entries=[];
@@ -618,6 +620,7 @@ function shiftSelection(deltaDays){
 }
 
 function setSelectionCategory(catId){
+  markUnsavedChanges();
   if(!selection) return;
   var cat=catById(catId); if(!cat) return;
   var d=parseIso(selection.startIso);
@@ -626,6 +629,7 @@ function setSelectionCategory(catId){
 }
 
 function deleteSelection(){
+  markUnsavedChanges();
   if(!selection) return;
   var d=parseIso(selection.startIso);
   while(iso(d)<=selection.endIso){ delete state.dayData[iso(d)]; d.setDate(d.getDate()+1); }
@@ -704,8 +708,10 @@ function saveJson(){
   a.href=URL.createObjectURL(blob);
   a.download=(state.name||'Massnahme').replace(/[^\w\-]+/g,'_')+'.json';
   document.body.appendChild(a); a.click(); a.remove();
+  markSaved();
 }
 function loadJsonFile(file){
+  markSaved();
   var reader=new FileReader();
   reader.onload=function(){
     try{
@@ -1741,14 +1747,6 @@ function buildAutoBackupData(){
   };
 }
 
-function saveAutoBackup(){
-  try{
-    localStorage.setItem(AUTO_BACKUP_KEY, JSON.stringify(buildAutoBackupData()));
-    localStorage.setItem(AUTO_BACKUP_TIME_KEY, String(Date.now()));
-  }catch(err){
-    console.warn('Automatische Sicherung konnte nicht gespeichert werden:', err);
-  }
-}
 
 function hasAutoBackup(){
   try{
@@ -1756,28 +1754,6 @@ function hasAutoBackup(){
   }catch(err){ return false; }
 }
 
-function restoreAutoBackup(){
-  try{
-    var raw=localStorage.getItem(AUTO_BACKUP_KEY);
-    if(!raw) return false;
-    var data=JSON.parse(raw);
-    if(!data || !data.dayData || !Array.isArray(data.categories)) return false;
-
-    state.name=data.name||state.name;
-    state.bundesland=data.bundesland||state.bundesland;
-    if(data.rangeStart){
-      var d=parseIso(data.rangeStart);
-      if(d) state.rangeStart=d;
-    }
-    if(data.numMonths) state.numMonths=Math.max(1,Math.min(36,parseInt(data.numMonths,10)||12));
-    state.categories=data.categories;
-    state.dayData=data.dayData;
-    return true;
-  }catch(err){
-    console.warn('Automatische Sicherung konnte nicht wiederhergestellt werden:', err);
-    return false;
-  }
-}
 
 function maybeRestoreAutoBackup(){
   if(!hasAutoBackup()) return;
@@ -1799,12 +1775,6 @@ function maybeRestoreAutoBackup(){
   }
 }
 
-function clearAutoBackup(){
-  try{
-    localStorage.removeItem(AUTO_BACKUP_KEY);
-    localStorage.removeItem(AUTO_BACKUP_TIME_KEY);
-  }catch(err){}
-}
 
 
 function openAboutModal(){
@@ -1980,6 +1950,29 @@ window.addEventListener('error', function(e){
   if(e && e.message && !document.hidden){
     console.warn('Maßnahmenkalender-Fehler:', e.message);
   }
+});
+
+
+/* ============================================================
+   SPEICHERSTATUS
+   Keine automatische Sicherung.
+   Beim Schließen wird nur bei ungespeicherten Änderungen gefragt.
+   © 2026 Martin Hummel / Arno Faulwasser
+   ============================================================ */
+var hasUnsavedChanges = false;
+
+function markUnsavedChanges(){
+  hasUnsavedChanges = true;
+}
+
+function markSaved(){
+  hasUnsavedChanges = false;
+}
+
+window.addEventListener('beforeunload', function(e){
+  if(!hasUnsavedChanges) return;
+  e.preventDefault();
+  e.returnValue = '';
 });
 
 </script>
