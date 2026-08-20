@@ -87,23 +87,6 @@
   .floating button:hover{background:#3a4150;}
   .floating select{padding:5px 6px; border-radius:6px; border:none;}
 
-  /* Druckansicht: nur Kalender und Zusammenfassung drucken. */
-  @media print{
-    @page{size:landscape;margin:8mm;}
-    body{background:#fff !important;font-size:10px;}
-    #app{max-width:none;padding:0;}
-    #app > .panel,
-    #stickyTop,
-    #limitWarnings,
-    #selectionToolbar,
-    #categoryModal,
-    #kalendariumModal,
-    #aboutModal,
-    #appVersionFooter{display:none !important;}
-    #calendar,#summary{display:block !important;}
-    #calendar{break-inside:auto;}
-    button,input,select,textarea{display:none !important;}
-  }
 </style>
 </head>
 <body>
@@ -141,7 +124,6 @@
         <button id="loadBtn">Laden (JSON)</button>
         <button id="exportBtn" class="primary">Excel-Export</button>
         <button id="kalWordBtn" class="primary">📅 Wordexport Kalendarium</button>
-        <button id="printBtn">🖨️ Drucken</button>
         <button id="aboutBtn">Über</button>
       </div>
     </div>
@@ -238,7 +220,7 @@
 /* ============================================================
    VERSION / COPYRIGHT
    Version 2.1.0 – zusammengeführte Maßnahmenkalender-Version
-   © 2026 Martin Hummel / Arno Faulwasser
+   © 2026 Arno Faulwasser
    © 2026 arvaport Dienstleistungsgesellschaft mbH
    ============================================================ */
 var APP_VERSION = '2.1.0';
@@ -1824,14 +1806,6 @@ function clearAutoBackup(){
   }catch(err){}
 }
 
-function printCalendar(){
-  try{
-    window.print();
-  }catch(err){
-    alert('Der Druckdialog konnte nicht geöffnet werden. Bitte versuchen Sie es erneut.');
-    console.error(err);
-  }
-}
 
 function openAboutModal(){
   document.getElementById('aboutModal').classList.remove('hidden');
@@ -1876,7 +1850,6 @@ function init(){
   });
   document.getElementById('saveBtn').addEventListener('click', function(){ saveJson(); saveAutoBackup(); });
   document.getElementById('loadBtn').addEventListener('click', function(){ document.getElementById('fileInput').click(); });
-  document.getElementById('printBtn').addEventListener('click', printCalendar);
   document.getElementById('aboutBtn').addEventListener('click', openAboutModal);
   document.getElementById('aboutCloseBtn').addEventListener('click', closeAboutModal);
   document.getElementById('fileInput').addEventListener('change', function(){ if(this.files[0]){ loadJsonFile(this.files[0]); setTimeout(saveAutoBackup, 100); } this.value=''; });
