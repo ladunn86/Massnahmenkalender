@@ -2,7 +2,7 @@ const { app, BrowserWindow, dialog } = require('electron');
 const path = require('path');
 
 let mainWindow;
-let isHandlingClose = false;
+let closingConfirmed = false;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -20,94 +20,173 @@ function createWindow() {
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
 
   mainWindow.on('close', async (event) => {
-    if (isHandlingClose) return;
 
+    // Wenn das Schließen bereits bestätigt wurde,
+    // darf Electron das Fenster schließen.
+    if (closingConfirmed) {
+      return;
+    }
+
+    // Zunächst Schließen verhindern.
     event.preventDefault();
 
     let hasUnsavedChanges = false;
 
     try {
       hasUnsavedChanges = await mainWindow.webContents.executeJavaScript(`
-        (typeof window.__massnahmenHasUnsavedChanges === 'function')
-          ? window.__massnahmenHasUnsavedChanges()
-          : false
+        (function () {
+
+          if (
+            typeof window.__massnahmenHasUnsavedChanges === 'function'
+          ) {
+            return window.__massnahmenHasUnsavedChanges();
+          }
+
+          if (
+            typeof window.hasUnsavedChanges !== 'undefined'
+          ) {
+            return window.hasUnsavedChanges === true;
+          }
+
+          return false;
+
+        })()
       `, true);
+
     } catch (error) {
+
       console.error(
-        'Speicherstatus konnte nicht abgefragt werden:',
+        'Fehler beim Prüfen des Speicherstatus:',
         error
       );
+
+      hasUnsavedChanges = false;
     }
 
-    // Keine Änderungen → direkt schließen.
+    // -------------------------------------------------------
+    // KEINE ÄNDERUNGEN
+    // -------------------------------------------------------
+
     if (!hasUnsavedChanges) {
-      isHandlingClose = true;
-      mainWindow.destroy();
+
+      closingConfirmed = true;
+      mainWindow.close();
+
       return;
     }
 
-    // Es gibt ungespeicherte Änderungen.
-    const result = await dialog.showMessageBox(mainWindow, {
-      type: 'question',
-      buttons: [
-        'Speichern',
-        'Nicht speichern',
-        'Abbrechen'
-      ],
-      defaultId: 0,
-      cancelId: 2,
-      title: 'Ungespeicherte Änderungen',
-      message: 'Es gibt ungespeicherte Änderungen.',
-      detail:
-        'Möchtest du die Änderungen vor dem Schließen speichern?'
-    });
+    // -------------------------------------------------------
+    // UNGESPEICHERTE ÄNDERUNGEN
+    // -------------------------------------------------------
 
+    const result = await dialog.showMessageBox(
+      mainWindow,
+      {
+        type: 'question',
+
+        title: 'Ungespeicherte Änderungen',
+
+        message:
+          'Es gibt ungespeicherte Änderungen.',
+
+        detail:
+          'Möchtest du die Änderungen vor dem Schließen speichern?',
+
+        buttons: [
+          'Speichern',
+          'Nicht speichern',
+          'Abbrechen'
+        ],
+
+        defaultId: 0,
+        cancelId: 2,
+        noLink: true
+      }
+    );
+
+    // -------------------------------------------------------
+    // ABBRECHEN
+    // -------------------------------------------------------
+
+    if (result.response === 2) {
+
+      // Fenster bleibt geöffnet.
+      return;
+    }
+
+    // -------------------------------------------------------
+    // NICHT SPEICHERN
+    // -------------------------------------------------------
+
+    if (result.response === 1) {
+
+      closingConfirmed = true;
+
+      mainWindow.close();
+
+      return;
+    }
+
+    // -------------------------------------------------------
     // SPEICHERN
-    if (result.response === 0) {
-      try {
-        await mainWindow.webContents.executeJavaScript(`
-          (function() {
-            if (typeof saveJson === 'function') {
-              saveJson();
+    // -------------------------------------------------------
 
-              if (typeof markSaved === 'function') {
-                markSaved();
-              }
+    if (result.response === 0) {
+
+      try {
+
+        await mainWindow.webContents.executeJavaScript(`
+          (async function () {
+
+            if (typeof saveJson === 'function') {
+              await saveJson();
             }
+
+            if (typeof markSaved === 'function') {
+              markSaved();
+            }
+
+            return true;
+
           })()
         `, true);
 
-        isHandlingClose = true;
-        mainWindow.destroy();
+        closingConfirmed = true;
+
+        mainWindow.close();
 
       } catch (error) {
+
         console.error(
-          'Speichern vor dem Schließen fehlgeschlagen:',
+          'Fehler beim Speichern:',
           error
         );
 
-        await dialog.showMessageBox(mainWindow, {
-          type: 'error',
-          buttons: ['OK'],
-          title: 'Speichern fehlgeschlagen',
-          message:
-            'Die Änderungen konnten nicht gespeichert werden.',
-          detail: String(error)
-        });
+        await dialog.showMessageBox(
+          mainWindow,
+          {
+            type: 'error',
+
+            title: 'Speichern fehlgeschlagen',
+
+            message:
+              'Die Änderungen konnten nicht gespeichert werden.',
+
+            detail:
+              String(error),
+
+            buttons: ['OK']
+          }
+        );
       }
-
-    // NICHT SPEICHERN
-    } else if (result.response === 1) {
-
-      isHandlingClose = true;
-      mainWindow.destroy();
-
-    // ABBRECHEN
-    } else {
-      // Fenster bleibt geöffnet.
     }
   });
 }
+
+
+// ---------------------------------------------------------
+// ELECTRON START
+// ---------------------------------------------------------
 
 app.whenReady().then(() => {
 
@@ -115,13 +194,20 @@ app.whenReady().then(() => {
 
   app.on('activate', () => {
 
-    if (BrowserWindow.getAllWindows().length === 0) {
+    if (
+      BrowserWindow.getAllWindows().length === 0
+    ) {
       createWindow();
     }
 
   });
 
 });
+
+
+// ---------------------------------------------------------
+// WINDOWS SCHLIESSEN
+// ---------------------------------------------------------
 
 app.on('window-all-closed', () => {
 
